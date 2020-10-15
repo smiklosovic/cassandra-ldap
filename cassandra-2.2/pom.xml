@@ -1,0 +1,36 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+      <groupId>com.instaclustr</groupId>
+      <artifactId>cassandra-ldap-parent</artifactId>
+      <version>1.0.0</version>
+      <relativePath>../pom.xml</relativePath>
+    </parent>
+
+    <artifactId>cassandra-ldap-2.2</artifactId>
+    <version>1.0.0</version>
+
+    <name>Cassandra LDAP Authenticator for Cassandra 2.2</name>
+    <description>Pluggable LDAP authentication implementation for Apache Cassandra 2.2</description>
+
+    <properties>
+        <version.cassandra.all>2.2.18</version.cassandra.all>
+    </properties>
+
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.cassandra</groupId>
+            <artifactId>cassandra-all</artifactId>
+            <version>${version.cassandra.all}</version>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <finalName>cassandra-ldap-${version.cassandra.all}</finalName>
+    </build>
+
+</project>
+
