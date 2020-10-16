@@ -25,10 +25,10 @@ import com.instaclustr.cassandra.ldap.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class CredentialsCacheLoadingFunction implements Function<User, String>
+public class CredentialsLoadingFunction implements Function<User, String>
 {
 
-    private static final Logger logger = LoggerFactory.getLogger(CredentialsCacheLoadingFunction.class);
+    private static final Logger logger = LoggerFactory.getLogger(CredentialsLoadingFunction.class);
 
     private Function<User, String> passwordAuthLoadingFunction;
 
@@ -36,9 +36,9 @@ public class CredentialsCacheLoadingFunction implements Function<User, String>
 
     private String namingAttributeValue;
 
-    public CredentialsCacheLoadingFunction(final Function<User, String> passwordAuthLoadingFunction,
-                                           final Function<User, String> ldapAuthLoadingFunction,
-                                           final String namingAttributeValue)
+    public CredentialsLoadingFunction(final Function<User, String> passwordAuthLoadingFunction,
+                                      final Function<User, String> ldapAuthLoadingFunction,
+                                      final String namingAttributeValue)
     {
         this.passwordAuthLoadingFunction = passwordAuthLoadingFunction;
         this.ldapAuthLoadingFunction = ldapAuthLoadingFunction;
@@ -67,7 +67,7 @@ public class CredentialsCacheLoadingFunction implements Function<User, String>
         // both against database first and if not successful, against LDAP.
         if (user.getUsername() != null && user.getUsername().contains(namingAttributeValue + "="))
         {
-            logger.info("Doing LDAP authentication against " + user.getUsername());
+            logger.debug("Doing LDAP authentication against " + user.getUsername());
 
             Optional<String> username = Stream.of(user.getUsername().split(","))
                 .filter(component -> component.startsWith(namingAttributeValue + "="))
@@ -83,14 +83,12 @@ public class CredentialsCacheLoadingFunction implements Function<User, String>
 
         try
         {
-            logger.info("Doing password authentication against " + user.getUsername());
+            logger.debug("Doing password authentication against " + user.getUsername());
 
             return getPasswordAuthLoadingFunction().apply(user);
         } catch (final Exception ex)
         {
-            ex.printStackTrace();
-
-            logger.info("Doing LDAP authentication against " + user.getUsername());
+            logger.debug("Doing LDAP authentication in exception block against " + user.getUsername());
 
             // we are in this catch block because
             // 1) there was not such role found in Cassandra DB hence we have to go against LDAP

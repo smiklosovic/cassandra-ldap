@@ -1,12 +1,9 @@
 package com.instaclustr.cassandra.ldap;
 
-import static org.awaitility.Awaitility.await;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertTrue;
 
-import java.net.Socket;
-import java.net.SocketException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -21,7 +18,6 @@ import com.github.nosan.embedded.cassandra.api.Version;
 import com.github.nosan.embedded.cassandra.artifact.Artifact;
 import com.github.nosan.embedded.cassandra.commons.io.ClassPathResource;
 import com.github.nosan.embedded.cassandra.commons.util.FileUtils;
-import org.awaitility.Durations;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -43,11 +39,15 @@ public abstract class AbstractLDAPTest
     protected EmbeddedCassandraFactory defaultNodeFactory()
     {
         EmbeddedCassandraFactory factory = new EmbeddedCassandraFactory();
-        factory.setArtifact(getCassandraArtifact());
         factory.getJvmOptions().add("-Xmx1g");
         factory.getJvmOptions().add("-Xms1g");
 
         return factory;
+    }
+
+    public CassandraClusterContext getClusterContext(boolean ldapEnabled) throws Exception
+    {
+        return getClusterContext(null, null, ldapEnabled);
     }
 
     public CassandraClusterContext getClusterContext() throws Exception
@@ -61,6 +61,7 @@ public abstract class AbstractLDAPTest
 
         Path firstWorkDir = firstDir == null ? Files.createTempDirectory(null) : firstDir;
 
+        firstFactory.setArtifact(getCassandraArtifact());
         firstFactory.setRackConfig(new ClassPathResource("cassandra1-rackdc.properties"));
         firstFactory.setWorkingDirectory(firstWorkDir);
 
@@ -78,6 +79,7 @@ public abstract class AbstractLDAPTest
 
         Path secondWorkDir = secondDir == null ? Files.createTempDirectory(null) : secondDir;
 
+        secondFactory.setArtifact(getCassandraArtifact());
         secondFactory.setRackConfig(new ClassPathResource("cassandra2-rackdc.properties"));
         secondFactory.setWorkingDirectory(secondWorkDir);
 
@@ -123,12 +125,8 @@ public abstract class AbstractLDAPTest
         {
             firstNode = firstFactory.create();
             firstNode.start();
-//            waitForOpenPort("127.0.0.1", 7199);
-//            waitForOpenPort("127.0.0.2", 9042);
             secondNode = secondFactory.create();
             secondNode.start();
-//            waitForOpenPort("127.0.0.1", 7200);
-//            waitForOpenPort("127.0.0.2", 9042);
         }
 
         public void stop()
@@ -144,45 +142,6 @@ public abstract class AbstractLDAPTest
                 secondNode.stop();
                 secondNode = null;
             }
-        }
-
-        public void copyWorkingDirs() throws Exception
-        {
-            Files.createDirectories(firstNodePath);
-            Files.createDirectories(secondNodePath);
-            FileUtils.copy(firstFactory.getWorkingDirectory(), firstNodePath, (path, basicFileAttributes) -> true);
-            FileUtils.copy(secondFactory.getWorkingDirectory(), secondNodePath, (path, basicFileAttributes) -> true);
-
-        }
-
-        public void waitForClosedPort(String hostname, int port)
-        {
-            await().timeout(Durations.FIVE_MINUTES).until(() ->
-                                                          {
-                                                              try
-                                                              {
-                                                                  (new Socket(hostname, port)).close();
-                                                                  return false;
-                                                              } catch (SocketException e)
-                                                              {
-                                                                  return true;
-                                                              }
-                                                          });
-        }
-
-        public void waitForOpenPort(String hostname, int port)
-        {
-            await().timeout(Durations.FIVE_MINUTES).until(() ->
-                                                          {
-                                                              try
-                                                              {
-                                                                  (new Socket(hostname, port)).close();
-                                                                  return true;
-                                                              } catch (SocketException e)
-                                                              {
-                                                                  return false;
-                                                              }
-                                                          });
         }
 
         public void execute(Cassandra node,
@@ -208,7 +167,6 @@ public abstract class AbstractLDAPTest
     {
         for (Path path : paths)
         {
-            FileUtils.copy(path, cassandraHome.resolve("lib").resolve(path.getFileName()), (a, b) -> true);
             FileUtils.copy(path, cassandraHome.resolve("lib").resolve(path.getFileName()), (a, b) -> true);
         }
     }

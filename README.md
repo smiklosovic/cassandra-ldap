@@ -46,7 +46,7 @@ You can achieve same behaviour with doing
 
 In your `cassandra.yaml` configure the authenticator **and authorizer** like so:
 
-    authenticator: com.instaclustr.cassandra.ldap.LDAPAuthenticator
+    authenticator: com.instaclustr.cassandra.ldap.CachingLDAPAuthenticator
     authorizer: CassandraAuthorizer
     role_manager: com.instaclustr.cassandra.ldap.LDAPCassandraRoleManager
 

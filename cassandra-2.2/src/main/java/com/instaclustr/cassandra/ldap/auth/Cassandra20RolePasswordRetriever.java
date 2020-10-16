@@ -1,23 +1,4 @@
-/*
- * Licensed to the Apache Software Foundation (ASF) under one
- * or more contributor license agreements.  See the NOTICE file
- * distributed with this work for additional information
- * regarding copyright ownership.  The ASF licenses this file
- * to you under the Apache License, Version 2.0 (the
- * "License"); you may not use this file except in compliance
- * with the License.  You may obtain a copy of the License at
- *
- *     http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an "AS IS" BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
 package com.instaclustr.cassandra.ldap.auth;
-
-import static org.apache.cassandra.config.SchemaConstants.AUTH_KEYSPACE_NAME;
 
 import com.google.common.collect.Lists;
 import com.instaclustr.cassandra.ldap.User;
@@ -37,14 +18,15 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Cassandra3RolePasswordRetriever implements CassandraPasswordRetriever
+public class Cassandra20RolePasswordRetriever implements CassandraPasswordRetriever
 {
 
-    private static final Logger logger = LoggerFactory.getLogger(Cassandra3RolePasswordRetriever.class);
+    private static final Logger logger = LoggerFactory.getLogger(Cassandra20RolePasswordRetriever.class);
 
     private SelectStatement authenticateStatement;
 
-    public static final String LEGACY_CREDENTIALS_TABLE = "credentials";
+    private static final String LEGACY_CREDENTIALS_TABLE = "credentials";
+    private static final String AUTH_KEYSPACE = "system_auth";
     private SelectStatement legacyAuthenticateStatement;
     private ClientState clientState;
 
@@ -53,7 +35,7 @@ public class Cassandra3RolePasswordRetriever implements CassandraPasswordRetriev
     {
         this.clientState = clientState;
         authenticateStatement = (SelectStatement) QueryProcessor.getStatement("SELECT salted_hash FROM system_auth.roles WHERE role = ?", clientState).statement;
-        if (Schema.instance.getCFMetaData(AUTH_KEYSPACE_NAME, LEGACY_CREDENTIALS_TABLE) != null)
+        if (Schema.instance.getCFMetaData(AUTH_KEYSPACE, LEGACY_CREDENTIALS_TABLE) != null)
         {
             prepareLegacyAuthenticateStatementInternal(clientState);
         }
@@ -70,8 +52,7 @@ public class Cassandra3RolePasswordRetriever implements CassandraPasswordRetriev
             ResultMessage.Rows rows =
                 authenticationStatement.execute(QueryState.forInternalCalls(),
                                                 QueryOptions.forInternalCalls(consistencyForRole(user.getUsername()),
-                                                                              Lists.newArrayList(ByteBufferUtil.bytes(user.getUsername()))),
-                                                System.nanoTime());
+                                                                              Lists.newArrayList(ByteBufferUtil.bytes(user.getUsername()))));
 
             // If either a non-existent role name was supplied, or no credentials
             // were found for that role we don't want to cache the result so we throw
@@ -112,7 +93,7 @@ public class Cassandra3RolePasswordRetriever implements CassandraPasswordRetriev
      */
     private SelectStatement authenticationStatement(ClientState clientState)
     {
-        if (Schema.instance.getCFMetaData(AUTH_KEYSPACE_NAME, LEGACY_CREDENTIALS_TABLE) == null)
+        if (Schema.instance.getCFMetaData(AUTH_KEYSPACE, LEGACY_CREDENTIALS_TABLE) == null)
         {
             return authenticateStatement;
         } else
@@ -131,9 +112,7 @@ public class Cassandra3RolePasswordRetriever implements CassandraPasswordRetriev
     {
         assert clientState != null;
 
-        String query = String.format("SELECT salted_hash from %s.%s WHERE username = ?",
-                                     AUTH_KEYSPACE_NAME,
-                                     LEGACY_CREDENTIALS_TABLE);
+        String query = String.format("SELECT salted_hash from %s.%s WHERE username = ?", AUTH_KEYSPACE, LEGACY_CREDENTIALS_TABLE);
         legacyAuthenticateStatement = (SelectStatement) QueryProcessor.getStatement(query, clientState).statement;
     }
 

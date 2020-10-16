@@ -17,6 +17,8 @@
  */
 package com.instaclustr.cassandra.ldap.auth;
 
+import static org.apache.cassandra.schema.SchemaConstants.AUTH_KEYSPACE_NAME;
+
 import com.google.common.collect.Lists;
 import com.instaclustr.cassandra.ldap.User;
 import com.instaclustr.cassandra.ldap.exception.NoSuchCredentialsException;
@@ -28,7 +30,6 @@ import org.apache.cassandra.cql3.statements.SelectStatement;
 import org.apache.cassandra.db.ConsistencyLevel;
 import org.apache.cassandra.exceptions.RequestExecutionException;
 import org.apache.cassandra.schema.Schema;
-import org.apache.cassandra.schema.SchemaConstants;
 import org.apache.cassandra.service.ClientState;
 import org.apache.cassandra.service.QueryState;
 import org.apache.cassandra.transport.messages.ResultMessage;
@@ -36,10 +37,10 @@ import org.apache.cassandra.utils.ByteBufferUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class Cassandra4RolePasswordRetriever implements CassandraPasswordRetriever
+public class Cassandra40RolePasswordRetriever implements CassandraPasswordRetriever
 {
 
-    private static final Logger logger = LoggerFactory.getLogger(Cassandra4RolePasswordRetriever.class);
+    private static final Logger logger = LoggerFactory.getLogger(Cassandra40RolePasswordRetriever.class);
 
     private SelectStatement authenticateStatement;
     private SelectStatement legacyAuthenticateStatement;
@@ -54,7 +55,7 @@ public class Cassandra4RolePasswordRetriever implements CassandraPasswordRetriev
         this.clientState = clientState;
         authenticateStatement = (SelectStatement) QueryProcessor.getStatement("SELECT salted_hash FROM system_auth.roles WHERE role = ?", clientState);
 
-        if (Schema.instance.getTableMetadata(SchemaConstants.AUTH_KEYSPACE_NAME, LEGACY_CREDENTIALS_TABLE) != null)
+        if (Schema.instance.getTableMetadata(AUTH_KEYSPACE_NAME, LEGACY_CREDENTIALS_TABLE) != null)
         {
             prepareLegacyAuthenticateStatementInternal();
         }
@@ -111,7 +112,7 @@ public class Cassandra4RolePasswordRetriever implements CassandraPasswordRetriev
      */
     private SelectStatement authenticationStatement()
     {
-        if (Schema.instance.getTableMetadata(SchemaConstants.AUTH_KEYSPACE_NAME, LEGACY_CREDENTIALS_TABLE) != null)
+        if (Schema.instance.getTableMetadata(AUTH_KEYSPACE_NAME, LEGACY_CREDENTIALS_TABLE) == null)
         {
             return authenticateStatement;
         } else
@@ -130,7 +131,9 @@ public class Cassandra4RolePasswordRetriever implements CassandraPasswordRetriev
     {
         assert clientState != null;
 
-        String query = String.format("SELECT salted_hash from %s.%s WHERE username = ?", SchemaConstants.AUTH_KEYSPACE_NAME, LEGACY_CREDENTIALS_TABLE);
+        String query = String.format("SELECT salted_hash from %s.%s WHERE username = ?",
+                                     AUTH_KEYSPACE_NAME,
+                                     LEGACY_CREDENTIALS_TABLE);
         legacyAuthenticateStatement = (SelectStatement) QueryProcessor.getStatement(query, clientState);
     }
 

@@ -1,11 +1,10 @@
 package com.instaclustr.cassandra.ldap.auth;
 
-import static com.instaclustr.cassandra.ldap.AbstractLDAPTest.CassandraClusterContext.firstNodePath;
-import static com.instaclustr.cassandra.ldap.AbstractLDAPTest.CassandraClusterContext.secondNodePath;
 import static java.util.stream.Collectors.toList;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Arrays;
@@ -27,64 +26,48 @@ public class CassandraLDAPTest extends AbstractLDAPTest
     @Override
     protected void configure(final EmbeddedCassandraFactory factory)
     {
-//        factory.getConfigProperties().put("authenticator", "com.instaclustr.cassandra.ldap.LDAPAuthenticator");
-//        factory.getConfigProperties().put("authorizer", "CassandraAuthorizer");
-//        factory.getConfigProperties().put("role_manager", "com.instaclustr.cassandra.ldap.LDAPCassandraRoleManager");
         factory.getSystemProperties().put("cassandra.ldap.properties.file", Paths.get("src/test/resources/ldap.properties").toAbsolutePath().toString());
     }
 
     @Test
-    public void testLDAP()
+    public void testLDAP() throws Exception
     {
-        CassandraClusterContext normalCluster = null;
-        CassandraClusterContext ldapCluster = null;
+        CassandraClusterContext context = null;
+
+        List<Path> pluginJars = createPluginJars();
 
         try
         {
-            List<Path> pluginJars = createPluginJars();
+            copyJars(pluginJars, getCassandraArtifact().getDistribution().getDirectory());
 
-            normalCluster = getClusterContext();
+            context = getClusterContext(true);
 
-            normalCluster.start();
+            configure(context.firstFactory);
+            configure(context.secondFactory);
 
-            normalCluster.execute(normalCluster.firstNode, "cassandra", "cassandra", "select * from system_auth.roles");
-            normalCluster.execute(normalCluster.secondNode, "cassandra", "cassandra", "select * from system_auth.roles");
+            context.start();
 
-            normalCluster.copyWorkingDirs();
-
-            normalCluster.stop();
-
-            // configure ldap for both
-
-            ldapCluster = getClusterContext(firstNodePath, secondNodePath, true);
-            configure(ldapCluster.firstFactory);
-            configure(ldapCluster.secondFactory);
-
-            // copy plugin jar to both nodes' directories
-
-            copyJars(pluginJars, firstNodePath);
-            copyJars(pluginJars, secondNodePath);
-
-            ldapCluster.start();
-
-            // normal
-
-            ldapCluster.execute(ldapCluster.firstNode, "cassandra", "cassandra", "select * from system_auth.roles");
-            ldapCluster.execute(ldapCluster.secondNode, "cassandra", "cassandra", "select * from system_auth.roles");
-
-            // ldap login
-
-            ldapCluster.stop();
+            context.execute(context.firstNode, "cassandra", "cassandra", "select * from system_auth.roles");
+            context.execute(context.secondNode, "cassandra", "cassandra", "select * from system_auth.roles");
+            // ldap!
+            context.execute(context.secondNode, "admin", "admin", "select * from system_auth.roles");
+            context.execute(context.secondNode, "cn=admin,dc=example,dc=org", "admin", "select * from system_auth.roles");
         } catch (final Exception ex)
         {
             ex.printStackTrace();
-            if (normalCluster != null)
+        } finally
+        {
+            if (context != null)
             {
-                normalCluster.stop();
+                context.stop();
             }
-            if (ldapCluster != null)
+
+            if (pluginJars != null)
             {
-                ldapCluster.stop();
+                for (Path p : pluginJars)
+                {
+                    Files.deleteIfExists(getCassandraArtifact().getDistribution().getDirectory().resolve("lib").resolve(p.getFileName()));
+                }
             }
         }
     }

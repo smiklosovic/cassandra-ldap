@@ -22,6 +22,7 @@ import static org.apache.cassandra.db.ConsistencyLevel.ONE;
 
 import com.google.common.collect.Lists;
 import org.apache.cassandra.auth.AuthKeyspace;
+import org.apache.cassandra.config.DatabaseDescriptor;
 import org.apache.cassandra.cql3.QueryOptions;
 import org.apache.cassandra.cql3.QueryProcessor;
 import org.apache.cassandra.cql3.statements.CreateRoleStatement;
@@ -56,13 +57,19 @@ public class SystemAuthRolesImpl extends SystemAuthRoles
         return rows.result.isEmpty();
     }
 
-    public void createRole(String roleName)
+    public void createRole(String roleName, boolean superUser)
     {
         final CreateRoleStatement createStmt =
-            (CreateRoleStatement) QueryProcessor.getStatement(format(CREATE_ROLE_STATEMENT_WITH_LOGIN, roleName), getClientState()).statement;
+            (CreateRoleStatement) QueryProcessor.getStatement(format(CREATE_ROLE_STATEMENT_WITH_LOGIN, roleName, superUser), getClientState()).statement;
 
         createStmt.execute(new QueryState(getClientState()),
                            QueryOptions.forInternalCalls(ONE, Lists.newArrayList(ByteBufferUtil.bytes(roleName))),
                            System.nanoTime());
+    }
+
+    @Override
+    public boolean shouldWaitForInitialisedRole()
+    {
+        return DatabaseDescriptor.getAuthorizer().requireAuthorization();
     }
 }

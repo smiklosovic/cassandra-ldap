@@ -22,8 +22,6 @@ import java.util.Set;
 import com.google.common.collect.ImmutableSet;
 import org.apache.cassandra.auth.CassandraRoleManager;
 import org.apache.cassandra.config.DatabaseDescriptor;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 /**
  * CassandraRoleManager by default supports setting passwords only in connection with PasswordAuthenticator.
@@ -31,17 +29,10 @@ import org.slf4j.LoggerFactory;
 public class LDAPCassandraRoleManager extends CassandraRoleManager
 {
 
-    private final Logger logger = LoggerFactory.getLogger(LDAPCassandraRoleManager.class);
-
-    public LDAPCassandraRoleManager()
-    {
-        logger.info("Instantiated ...");
-    }
-
     @Override
     public Set<Option> supportedOptions()
     {
-        return DatabaseDescriptor.getAuthenticator().getClass() == LDAPAuthenticator.class
+        return DatabaseDescriptor.getAuthenticator().getClass().isAssignableFrom(AbstractLDAPAuthenticator.class)
             ? ImmutableSet.of(Option.LOGIN, Option.SUPERUSER, Option.PASSWORD)
             : ImmutableSet.of(Option.LOGIN, Option.SUPERUSER);
     }

@@ -27,7 +27,6 @@ import javax.naming.directory.SearchControls;
 import javax.naming.directory.SearchResult;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.net.InetAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.Collections;
@@ -35,6 +34,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Hashtable;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Properties;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
@@ -72,10 +72,10 @@ import org.slf4j.LoggerFactory;
  *
 
  */
-public class LDAPAuthenticator implements IAuthenticator
+public class Cassandra20LDAPAuthenticator implements IAuthenticator
 {
 
-    private static final Logger logger = LoggerFactory.getLogger(LDAPAuthenticator.class);
+    private static final Logger logger = LoggerFactory.getLogger(Cassandra20LDAPAuthenticator.class);
 
     // Ldap URI including DN
     public final static String LDAP_URI_PROP = "ldap_uri";
@@ -140,7 +140,7 @@ public class LDAPAuthenticator implements IAuthenticator
 
         if (!properties.containsKey(LDAP_URI_PROP))
         {
-            throw new ConfigurationException(String.format("{0} MUST be set in the configuration file.", LDAP_URI_PROP));
+            throw new ConfigurationException(String.format("%s MUST be set in the configuration file.", LDAP_URI_PROP));
         }
 
         properties.put(Context.INITIAL_CONTEXT_FACTORY, properties.getProperty(CONTEXT_FACTORY_PROP, DEFAULT_CONTEXT_FACTORY));
@@ -221,7 +221,7 @@ public class LDAPAuthenticator implements IAuthenticator
      * Fetch a DN for a specific user
      * @param user Username (CN)
      * @return DN for user
-     * @throws NamingException
+     * @throws NamingException exception in case we can not get users id
      */
     private String getUid(String user) throws NamingException
     {
@@ -240,12 +240,12 @@ public class LDAPAuthenticator implements IAuthenticator
         String filter = "(" + properties.getOrDefault(NAMING_ATTRIBUTE_PROP, "cn") + "=" + user + ")";
         SearchControls ctrl = new SearchControls();
         ctrl.setSearchScope(SearchControls.SUBTREE_SCOPE);
-        NamingEnumeration answer = serviceContext.search("", filter, ctrl);
+        NamingEnumeration<SearchResult> answer = serviceContext.search("", filter, ctrl);
 
         String dn;
         if (answer.hasMore())
         {
-            SearchResult result = (SearchResult) answer.next();
+            SearchResult result = answer.next();
             dn = result.getNameInNamespace();
         } else
         {
@@ -263,9 +263,9 @@ public class LDAPAuthenticator implements IAuthenticator
      * @return True if we successfully authenticated.
      * @throws NamingException if authentication fails or other error occurs.
      */
-    private String authDN(User user) throws NamingException
+    private void authDN(User user) throws NamingException
     {
-        Hashtable env = getUserEnv();
+        Hashtable<String, String> env = getUserEnv();
         env.put(Context.SECURITY_PRINCIPAL, user.username);
         env.put(Context.SECURITY_CREDENTIALS, user.password);
         DirContext ctx = null;
@@ -276,15 +276,9 @@ public class LDAPAuthenticator implements IAuthenticator
         {
             if (ctx != null)
             {
-                try
-                {
-                    ctx.close();
-                } catch (NamingException n)
-                {
-                }
+                ctx.close();
             }
         }
-        return user.password;
     }
 
     /**
@@ -364,11 +358,13 @@ public class LDAPAuthenticator implements IAuthenticator
         }
     }
 
-    public SaslNegotiator newSaslNegotiator(InetAddress clientAddress)
+    @Override
+    public SaslNegotiator newSaslNegotiator()
     {
         return new PlainTextSaslAuthenticator();
     }
 
+    @Override
     public AuthenticatedUser legacyAuthenticate(Map<String, String> credentials) throws AuthenticationException
     {
         String username = credentials.get(LDAP_DN);
@@ -474,15 +470,24 @@ public class LDAPAuthenticator implements IAuthenticator
         }
 
         @Override
-        public boolean equals(Object obj)
+        public boolean equals(final Object o)
         {
-            if (obj == null)
+            if (this == o)
+            {
+                return true;
+            }
+            if (o == null || getClass() != o.getClass())
             {
                 return false;
             }
-            final User other = (User) obj;
+            final User user = (User) o;
+            return username.equals(user.username);
+        }
 
-            return this.username.equals(other.username);
+        @Override
+        public int hashCode()
+        {
+            return Objects.hash(username);
         }
     }
 }

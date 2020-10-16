@@ -29,16 +29,17 @@ import org.slf4j.LoggerFactory;
 
 public class PlainTextSaslAuthenticator implements IAuthenticator.SaslNegotiator
 {
+
     private static final Logger logger = LoggerFactory.getLogger(PlainTextSaslAuthenticator.class);
 
-    private LDAPAuthenticator ldapAuthenticator;
+    private AbstractLDAPAuthenticator ldapAuthenticator;
 
     private boolean complete = false;
 
     private String username;
     private String password;
 
-    public PlainTextSaslAuthenticator(LDAPAuthenticator ldapAuthenticator)
+    public PlainTextSaslAuthenticator(AbstractLDAPAuthenticator ldapAuthenticator)
     {
         this.ldapAuthenticator = ldapAuthenticator;
     }
@@ -91,18 +92,25 @@ public class PlainTextSaslAuthenticator implements IAuthenticator.SaslNegotiator
             if (bytes[i] == 0)
             {
                 if (pass == null)
+                {
                     pass = Arrays.copyOfRange(bytes, i + 1, end);
-                else if (user == null)
+                } else if (user == null)
+                {
                     user = Arrays.copyOfRange(bytes, i + 1, end);
+                }
                 end = i;
             }
         }
 
         if (pass == null)
+        {
             throw new AuthenticationException("Password must not be null");
+        }
 
         if (user == null)
+        {
             throw new AuthenticationException("Authentication ID must not be null");
+        }
 
         username = new String(user, UTF_8);
         password = new String(pass, UTF_8);

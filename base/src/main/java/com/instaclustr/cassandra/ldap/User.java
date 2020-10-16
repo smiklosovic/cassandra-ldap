@@ -21,6 +21,7 @@ import org.apache.commons.lang3.builder.HashCodeBuilder;
 
 public class User
 {
+
     private final String username;
 
     private final String password;
@@ -35,7 +36,9 @@ public class User
     public User(String username, String password)
     {
         if (username == null)
+        {
             throw new RuntimeException("Username provided to User instance can not be a null object.");
+        }
 
         this.username = username;
         this.password = password;
@@ -64,13 +67,19 @@ public class User
     public boolean equals(Object obj)
     {
         if (obj == null)
+        {
             return false;
+        }
 
         if (!(obj instanceof User))
+        {
             return false;
+        }
 
         if (this == obj)
+        {
             return true;
+        }
 
         final User other = (User) obj;
 
